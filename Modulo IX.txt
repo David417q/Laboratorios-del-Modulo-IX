@@ -1,0 +1,246 @@
+Práctica 1: Instalación de Webmin
+
+
+sudo dnf install -y perl perl-Net-SSLeay openssl perl-Encode-Detect
+sudo rpm --import http://www.webmin.com/jcameron-key.asc
+sudo dnf install -y wget
+sudo wget http://www.webmin.com/download/rpm/webmin-current.rpm
+sudo dnf install -y ./webmin-current.rpm
+
+
+Iniciar el servicio
+sudo systemctl start webmin
+sudo systemctl enable webmin
+
+Verificar que el servicio esté corriendo
+sudo systemctl status webmin
+
+sudo /usr/libexec/webmin/changepass.pl /etc/webmin root 20241922
+
+https://localhost:10000
+
+
+
+Práctica 2: Despliegue de VM con Terraform en Digital Ocean
+Instalar Terraform:
+
+
+sudo dnf update -y
+sudo dnf install -y wget unzip
+
+
+wget https://releases.hashicorp.com/terraform/1.8.0/terraform_1.8.0_linux_amd64.zip
+
+unzip terraform_1.8.0_linux_amd64.zip
+
+sudo mv terraform /usr/local/bin/
+
+terraform --version
+
+CONSEGUIR EL API
+
+
+
+Sube tu llave pública SSH a Digital Ocean
+
+ssh-keygen -t rsa -b 4096
+cat ~/.ssh/id_rsa.pub
+
+mkdir -p terraform
+cd terraform
+
+sudo nano main.tf
+
+terraform {
+  required_providers {
+    digitalocean = {
+      source = "digitalocean/digitalocean"
+      version = "~> 2.0"
+    }
+  }
+}
+
+variable "do_token" {
+  description = ""
+}
+
+variable "ssh_key_fingerprint" {
+  description = ""
+}
+
+provider "digitalocean" {
+  token = var.do_token
+}
+
+resource "digitalocean_droplet" "OS3vm" {
+  image  = "ubuntu-22-04-x64"
+  name   = "OS3vm"
+  region = "nyc1"
+  size   = "s-1vcpu-1gb"
+  ssh_keys = [var.ssh_key_fingerprint]
+}
+
+output "droplet_ip_address" {
+  value = digitalocean_droplet.OS3vm.ipv4_address
+}
+
+
+
+sudo nano terraform.tfvars
+
+do_token = ""
+ssh_key_fingerprint = ""
+
+
+
+
+Despliegue con Terraform
+
+terraform init
+
+terraform plan
+
+terraform apply
+
+
+ssh root@
+
+
+
+
+
+
+PRACTICA 3 
+
+sudo dnf install -y ansible python3-pip
+pip3 install pywinrm
+
+
+ssh root@
+
+useradd -m -s /bin/bash ansible
+echo "ansible ALL=(ALL) NOPASSWD:ALL" | tee /etc/sudoers.d/ansible
+mkdir /home/ansible/.ssh
+cp /root/.ssh/authorized_keys /home/ansible/.ssh/
+chown -R ansible:ansible /home/ansible/.ssh
+chmod 700 /home/ansible/.ssh
+chmod 600 /home/ansible/.ssh/authorized_keys
+
+exit
+
+ssh ansible@
+
+
+ir al windows 
+
+
+
+
+Enable-PSRemoting -Force
+
+
+Set-Item WSMan:\localhost\Service\Auth\Basic -Value True
+Set-Item WSMan:\localhost\Service\AllowUnencrypted -Value True
+
+Start-Service WinRM
+New-NetFirewallRule -Name "WinRM HTTP" -DisplayName "WinRM HTTP" -Protocol TCP -LocalPort 5985 -Action Allow
+
+
+New-LocalUser -Name "ansible" -Password (ConvertTo-SecureString "20241922" -AsPlainText -Force) -FullName "Ansible User" -Description "Usuario para Ansible"
+Add-LocalGroupMember -Group "Administradores" -Member "ansible"
+
+
+winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="1024"}'
+winrm set winrm/config '@{MaxTimeoutms="1800000"}'
+
+
+fedora
+
+
+
+
+sudo mkdir -p /etc/ansible
+sudo nano /etc/ansible/hosts
+
+
+sudo cp /etc/ansible/ansible2 /etc/ansible/hosts
+
+
+
+[linux]
+192.241.131.159 ansible_user=ansible ansible_connection=ssh ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[win]
+ ansible_user=ansible ansible_password=20241922 ansible_connection=winrm ansible_winrm_transport=basic ansible_port=5985 ansible_winrm_server_cert_validation=ignore
+
+sudo mkdir -p /etc/ansible/group_vars
+sudo nano /etc/ansible/group_vars/win.yml
+
+
+ansible_user: ansible
+ansible_password: 20241922
+ansible_connection: winrm
+ansible_winrm_transport: basic
+ansible_port: 5985
+ansible_winrm_server_cert_validation: ignore
+
+
+ansible linux -m ping
+ansible win -m win_ping
+
+PRACTICA 4 
+
+
+crear un arhico test 
+
+ansible win -m win_command -a "cmd.exe /c copy C:\\Users\\ansible\\Desktop\\test.txt C:\\Users\\ansible\\Documents\\test.txt"
+
+
+ansible linux -m reboot -b
+
+ssh root@
+
+
+
+
+PRACTICA 5
+
+nano notepadpp.yml
+
+- name: Instalar Notepad++ en Windows
+  hosts: win
+  tasks:
+    - name: Descargar el instalador de Notepad++
+      win_get_url:
+        url: https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.6.5/npp.8.6.5.Installer.exe
+        dest: C:\Users\ansible\Downloads\npp.8.6.5.Installer.exe
+      register: download_result
+
+    - name: Instalar Notepad++ desde el archivo descargado
+      win_package:
+        path: C:\Users\ansible\Downloads\npp.8.6.5.Installer.exe
+        state: present
+        arguments: /S
+      when: download_result is success
+
+
+ansible-playbook notepadpp.yml
+
+
+
+
+nano update_apt.yml
+
+- name: Actualizar repositorios en Linux
+  hosts: linux
+  tasks:
+    - name: Actualizar cache de APT
+      apt:
+        update_cache: yes
+      become: yes
+
+
+
+
+
+
